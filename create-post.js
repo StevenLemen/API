@@ -1,5 +1,9 @@
-// api/create-post.js (Node.js Vercel Serverless Function)
-export default async function handler(req, res) {
+// api/create-post.js
+module.exports = async (req, res) => {
+  if (req.method === 'GET') {
+    return res.status(200).json({ ok: true, route: '/api/create-post', method: 'GET' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Only POST allowed' });
   }
@@ -9,8 +13,13 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Missing Authorization header' });
   }
 
-  const { title, content, status = 'publish' } = req.body || {};
+  let body = req.body;
+  // Vercel sometimes gives raw body. Ensure we have an object.
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch { return res.status(400).json({ error: 'Invalid JSON body' }); }
+  }
 
+  const { title, content, status = 'publish' } = body || {};
   if (!title || !content) {
     return res.status(400).json({ error: 'Missing title or content' });
   }
@@ -20,12 +29,14 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Authorization': authHeader,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ title, content, status }),
+      body: JSON.stringify({ title, content, status })
     });
 
-    const wpJson = await wpRes.json();
+    const text = await wpRes.text();
+    let wpJson;
+    try { wpJson = JSON.parse(text); } catch { wpJson = { raw: text }; }
 
     if (!wpRes.ok) {
       return res.status(wpRes.status).json({ error: wpJson });
@@ -34,9 +45,9 @@ export default async function handler(req, res) {
     return res.status(200).json({
       status: 'success',
       message: 'Post published',
-      link: wpJson.link || null,
+      link: wpJson && wpJson.link ? wpJson.link : null
     });
   } catch (err) {
     return res.status(500).json({ error: 'Proxy failed', details: err.message });
   }
-}
+};
