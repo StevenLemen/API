@@ -1,0 +1,65 @@
+openapi: 3.1.0
+info:
+  title: Evergreen Analytics Blog API
+  description: |
+    This API allows posting new blog entries to the WordPress site at evergreenanalyticspartners.com.
+    Uses WordPress REST API with Basic Authentication via Application Passwords (via API Key injection).
+  version: 1.0.0
+servers:
+  - url: https://evergreenanalyticspartners.com/wp-json/wp/v2
+    description: Production WordPress Server
+paths:
+  /posts:
+    post:
+      operationId: createBlogPost
+      summary: Create and publish a new blog post
+      description: |
+        Publishes a new blog post to the WordPress site. Requires Base64-encoded credentials in the Authorization header.
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - content
+              properties:
+                title:
+                  type: string
+                  description: The title of the blog post
+                content:
+                  type: string
+                  description: The HTML or plain text content of the post
+                status:
+                  type: string
+                  description: The status of the post (e.g., publish, draft)
+                  enum: [publish, draft, pending, private]
+                  default: publish
+      responses:
+        '201':
+          description: Post created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  link:
+                    type: string
+                  status:
+                    type: string
+        '401':
+          description: Unauthorized — check credentials
+        '400':
+          description: Bad request — check required fields
+
+components:
+  securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
